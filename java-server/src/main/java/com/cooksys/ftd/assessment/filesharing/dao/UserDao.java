@@ -10,6 +10,7 @@ import com.cooksys.ftd.assessment.filesharing.model.User;
 public class UserDao extends AbstractDao {
 
 	public User createUser(User user) throws SQLException {
+		User invalidUser = new User(-1, "undefined", "undefined");
 		String findUser = "SELECT username FROM user"
 						+ "WHERE username like '" + user.getUsername() + "'";
 		
@@ -17,7 +18,7 @@ public class UserDao extends AbstractDao {
 		ResultSet rs = stmt.executeQuery(findUser);
 		
 		if (rs.next())
-			return null;
+			return invalidUser;
 		
 		String createUser = "INSERT INTO user (username, password)"
 						  + "VALUES( '" + user.getUsername() + ", '" + user.getPassword() + "')";

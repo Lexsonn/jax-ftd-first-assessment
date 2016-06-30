@@ -9,6 +9,7 @@ import java.util.Random;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 
 import org.slf4j.Logger;
@@ -17,9 +18,11 @@ import org.slf4j.LoggerFactory;
 import com.cooksys.ftd.assessment.filesharing.dao.FileDDao;
 import com.cooksys.ftd.assessment.filesharing.dao.UserDao;
 import com.cooksys.ftd.assessment.filesharing.dao.UserFileDao;
+import com.cooksys.ftd.assessment.filesharing.model.User;
 import com.cooksys.ftd.assessment.filesharing.model.api.AbstractCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.ClientMessage;
 import com.cooksys.ftd.assessment.filesharing.model.api.RegisterCommand;
+import com.cooksys.ftd.assessment.filesharing.model.api.Response;
 
 public class ClientHandler implements Runnable {
 	private Logger log = LoggerFactory.getLogger(ClientHandler.class);
@@ -46,14 +49,13 @@ public class ClientHandler implements Runnable {
 				input = reader.readLine();
 				JAXBContext jc = JAXBContext.newInstance(ClientMessage.class);
 				Unmarshaller unmarshaller = jc.createUnmarshaller();
+				unmarshaller.setProperty("eclipselink.media-type", "application/json");	
 				
 				ClientMessage clientMessage = (ClientMessage)unmarshaller.unmarshal(new StringReader(input));
 				
 				switch (clientMessage.getCommand()) {
 				case "register": 
-					AbstractCommand regCmd = new RegisterCommand();
-					regCmd.setUserDao(userDao);
-					regCmd.executeCommand(clientMessage.getMessage());
+					registerUser(clientMessage);
 					break;
 				case "login": break;
 				default:
@@ -101,6 +103,38 @@ public class ClientHandler implements Runnable {
 
 	public void setUserFileDao(UserFileDao userFileDao) {
 		this.userFileDao = userFileDao;
+	}
+	
+	public void registerUser(ClientMessage clientMessage) throws JAXBException, SQLException {
+		Response<User> response = new Response<>();
+		response.setError(false);
+		response.setMessage("User has been sucessfully registered!");
+		AbstractCommand regCmd = new RegisterCommand();
+		regCmd.setUserDao(userDao);
+		regCmd.executeCommand(clientMessage.getMessage());
+		User newUser = regCmd.getUser();
+		response.setData(newUser);
+		if (newUser == null) {
+			response.setError(true);
+			String message = "Unable to enter user into database.";
+			response.setMessage(message);
+			log.error(message);
+		}
+		else {
+			if (newUser.getUserId() == -1) {
+				response.setError(true);
+				String message = "Username already exists.";
+				response.setMessage(message);
+				log.info(message);
+			} else
+				log.info("User {} has been sucessfully registered!", newUser.getUsername());
+		}
+		
+		JAXBContext jc = JAXBContext.newInstance(Response.class);
+		Marshaller marshaller = jc.createMarshaller();
+		marshaller.setProperty("eclipselink.media-type", "application/json");
+		
+		marshaller.marshal(response, writer);
 	}
 	
 	public void generateSessionID() {

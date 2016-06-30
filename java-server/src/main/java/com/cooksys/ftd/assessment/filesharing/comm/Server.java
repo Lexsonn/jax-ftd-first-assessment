@@ -53,6 +53,10 @@ public class Server implements Runnable {
 		return handler;
 	}
 	
+	public void setServerSocket(ServerSocket serverSocket) {
+		this.serverSocket = serverSocket;
+	}
+	
 	public void setExecutor(ExecutorService executor) {
 		this.executor = executor;
 	}

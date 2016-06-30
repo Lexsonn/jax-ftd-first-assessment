@@ -1,5 +1,7 @@
 package com.cooksys.ftd.assessment.filesharing;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -23,6 +25,7 @@ public class Main {
 	private static String url = "jdbc:mysql://localhost:3306/user_file_database";
 	private static String username = "root";
 	private static String password = "bondstone";
+	private static int port = 667;
 	
 	public static void main(String[] args) throws ClassNotFoundException {
 		
@@ -32,7 +35,9 @@ public class Main {
 		try (Connection conn = DriverManager.getConnection(url, username, password)) {
 
 			Server server = new Server(); // init server
-
+			
+			server.setServerSocket(new ServerSocket(port));
+			
 			server.setExecutor(executor);
 
 			UserDao userDao = new UserDao();
@@ -47,15 +52,17 @@ public class Main {
 			server.setUserFileDao(userFileDao);
 			
 			Future<?> serverFuture = executor.submit(server); // start server
-																// (asynchronously)
+															  // (asynchronously)
 
 			serverFuture.get();
 
 		} catch (SQLException | InterruptedException | ExecutionException e) {
 			log.error("An error occurred during server startup. Shutting down after error log.", e);
+		} catch (IOException e) {
+			log.error("An error occurred when opening the server socket.", e);
 		} finally {
 			executor.shutdown(); // shutdown thread pool (see inside of try
-									// block for blocking call)
+								 // block for blocking call)
 		}
 	}
 }
