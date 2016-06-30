@@ -12,7 +12,7 @@ import org.eclipse.persistence.jaxb.JAXBContextProperties;
 
 import com.cooksys.ftd.assessment.filesharing.model.User;
 
-public class RegisterCommand extends AbstractCommand {
+public class LoginCommand extends AbstractCommand {
 	
 	@Override
 	public void executeCommand(String message, Map<String, Object> properties) throws JAXBException, SQLException {
@@ -23,6 +23,6 @@ public class RegisterCommand extends AbstractCommand {
 		
 		User newUser = (User)unmarshaller.unmarshal(new StringReader(message));
 		
-		this.user = userDao.createUser(newUser);
+		this.user = userDao.getUserByUsername(newUser.getUsername());
 	}
 }

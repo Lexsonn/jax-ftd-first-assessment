@@ -1,15 +1,11 @@
 package com.cooksys.ftd.assessment.filesharing.model;
 
-import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
-@XmlRootElement(name = "User")
+@XmlRootElement
 public class User {
-	@XmlElement(name = "userId")
 	private Integer userId;
-	@XmlElement(name = "username")
 	private String username;
-	@XmlElement(name = "password")
 	private String password;
 	
 	public User() {
@@ -86,6 +82,6 @@ public class User {
 
 	@Override
 	public String toString() {
-		return "User [userId=" + userId + ", username=" + username + ", password=" + password + "]";
+		return "{\"user\":{\"userId\":" + userId + ",\"username\":\"" + username + "\",\"password\":\"" + password + "\"}}";
 	}
 }

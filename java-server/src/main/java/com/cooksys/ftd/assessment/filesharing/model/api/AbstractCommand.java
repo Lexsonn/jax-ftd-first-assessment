@@ -2,6 +2,7 @@ package com.cooksys.ftd.assessment.filesharing.model.api;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.JAXBException;
 
@@ -29,7 +30,7 @@ public abstract class AbstractCommand {
 		super();
 	}
 	
-	public void executeCommand(String message) throws JAXBException, SQLException {
+	public void executeCommand(String message, Map<String, Object> properties) throws JAXBException, SQLException {
 		// implement in all commands
 	}
 

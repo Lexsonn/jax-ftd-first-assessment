@@ -1,15 +1,12 @@
 package com.cooksys.ftd.assessment.filesharing.model.api;
 
-import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 //*
-@XmlRootElement(name = "ClientMessage")
+@XmlRootElement
 public class ClientMessage {
-	@XmlElement(name = "message")
 	private String message;
-	@XmlElement(name = "command")
-	private String command;
+	private String data;
 	
 	public String getMessage() {
 		return message;
@@ -19,12 +16,12 @@ public class ClientMessage {
 		this.message = message;
 	}
 	
-	public String getCommand() {
-		return command;
+	public String getData() {
+		return data;
 	}
 	
-	public void setCommand(String command) {
-		this.command = command;
+	public void setData(String data) {
+		this.data = data;
 	}
 	
 }
