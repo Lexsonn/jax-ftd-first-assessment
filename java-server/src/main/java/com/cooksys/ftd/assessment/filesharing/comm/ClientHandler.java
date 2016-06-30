@@ -4,10 +4,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.sql.SQLException;
 import java.util.Random;
 
 import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
@@ -17,7 +17,9 @@ import org.slf4j.LoggerFactory;
 import com.cooksys.ftd.assessment.filesharing.dao.FileDDao;
 import com.cooksys.ftd.assessment.filesharing.dao.UserDao;
 import com.cooksys.ftd.assessment.filesharing.dao.UserFileDao;
+import com.cooksys.ftd.assessment.filesharing.model.api.AbstractCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.ClientMessage;
+import com.cooksys.ftd.assessment.filesharing.model.api.RegisterCommand;
 
 public class ClientHandler implements Runnable {
 	private Logger log = LoggerFactory.getLogger(ClientHandler.class);
@@ -45,17 +47,22 @@ public class ClientHandler implements Runnable {
 				JAXBContext jc = JAXBContext.newInstance(ClientMessage.class);
 				Unmarshaller unmarshaller = jc.createUnmarshaller();
 				
-				StringReader reader = new StringReader(input);
-				ClientMessage clientMessage = (ClientMessage)unmarshaller.unmarshal(reader);
+				ClientMessage clientMessage = (ClientMessage)unmarshaller.unmarshal(new StringReader(input));
 				
 				switch (clientMessage.getCommand()) {
-				case "register": break;
+				case "register": 
+					AbstractCommand regCmd = new RegisterCommand();
+					regCmd.setUserDao(userDao);
+					regCmd.executeCommand(clientMessage.getMessage());
+					break;
 				case "login": break;
 				default:
 				}
 				
 			} catch (IOException | JAXBException e) {
 				log.error("Error processing user input " + input + ".", e);
+			} catch (SQLException e) {
+				log.error("Error retreiving information from SQL database.", e);
 			}
 		}
 	}
