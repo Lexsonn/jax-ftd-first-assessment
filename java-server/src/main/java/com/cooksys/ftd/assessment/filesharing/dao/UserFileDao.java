@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.cooksys.ftd.assessment.filesharing.model.User;
 
-public class UserFileDao {
+public class UserFileDao extends AbstractDao {
 	
 	public File createFile(User user, String filepath) {
 		return null; //TODO

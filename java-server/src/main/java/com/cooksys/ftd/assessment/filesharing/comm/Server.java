@@ -56,4 +56,16 @@ public class Server implements Runnable {
 	public void setExecutor(ExecutorService executor) {
 		this.executor = executor;
 	}
+	
+	public void setUserDao(UserDao userDao) {
+		this.userDao = userDao;
+	}
+	
+	public void setFileDDao(FileDDao fileDDao) {
+		this.fileDDao = fileDDao;
+	}
+	
+	public void setUserFileDao(UserFileDao userFileDao) {
+		this.userFileDao = userFileDao;
+	}
 }

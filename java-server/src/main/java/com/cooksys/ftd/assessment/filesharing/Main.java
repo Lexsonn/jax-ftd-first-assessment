@@ -37,10 +37,14 @@ public class Main {
 
 			UserDao userDao = new UserDao();
 			userDao.setConn(conn);
-			FileDDao FileDDao = new FileDDao();
-			userDao.setConn(conn);
+			FileDDao fileDDao = new FileDDao();
+			fileDDao.setConn(conn);
 			UserFileDao userFileDao = new UserFileDao();
-			userDao.setConn(conn);
+			userFileDao.setConn(conn);
+			
+			server.setUserDao(userDao);
+			server.setFileDDao(fileDDao);
+			server.setUserFileDao(userFileDao);
 			
 			Future<?> serverFuture = executor.submit(server); // start server
 																// (asynchronously)
