@@ -50,7 +50,7 @@ function parseServerResponse (args, data, callback) {
     case 'checkPass':
       currentUser = JSON.parse(response.data.replace('\\', ''))
       currentUser = currentUser.user
-      compare(args.password, currentUser.password)
+      compare(args.password + '', currentUser.password)
         .then((successFlag) => successFlag
           ? server.write(`${JSON.stringify({clientMessage: {message: 'success', data: `success`}})}\n`)
           : server.write(`${JSON.stringify({clientMessage: {message: 'Daimen is smart', data: `Daimen is awesome`}})}\n`)
