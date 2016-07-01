@@ -21,12 +21,14 @@ import org.slf4j.LoggerFactory;
 import com.cooksys.ftd.assessment.filesharing.dao.FileDDao;
 import com.cooksys.ftd.assessment.filesharing.dao.UserDao;
 import com.cooksys.ftd.assessment.filesharing.dao.UserFileDao;
+import com.cooksys.ftd.assessment.filesharing.model.FileD;
 import com.cooksys.ftd.assessment.filesharing.model.User;
 import com.cooksys.ftd.assessment.filesharing.model.api.AbstractCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.ClientMessage;
 import com.cooksys.ftd.assessment.filesharing.model.api.LoginCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.RegisterCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.Response;
+import com.cooksys.ftd.assessment.filesharing.model.api.UploadCommand;
 
 public class ClientHandler implements Runnable {
 	private Logger log = LoggerFactory.getLogger(ClientHandler.class);
@@ -50,12 +52,8 @@ public class ClientHandler implements Runnable {
 	@Override
 	public void run() {
 		properties.put("eclipselink.media-type", "application/json");
-		generateSessionID();
-		
-		log.info("Session ID={}", sessionID);
 		closed = false;
-		// read commands and data from the client then send back a Response<T> object
-		// rinse and repeat
+
 		String input = "";
 		try {
 			while (!closed) {
@@ -66,16 +64,34 @@ public class ClientHandler implements Runnable {
 				switch (clientMessage.getMessage()) {
 				case "register": registerUser(clientMessage); break;
 				case "login": loginUser(clientMessage); break;
-				default: 
+				default: // Functions allowed only while logged in
+					int delimIndex = clientMessage.getMessage().indexOf('*');
+					if (delimIndex == -1) {
+						log.info("Session IDs do not match.");
+						writer.write("{\"response\":{\"message\":\"*error*Login credentials are incorrect\"}}");
+						writer.flush();
+					} else {
+						String connSessionID = clientMessage.getMessage().substring(delimIndex + 1);
+						if (connSessionID.equals(sessionID))
+							log.info("Session IDs match!");
+						String newMessage = clientMessage.getMessage().substring(0, delimIndex);
+						switch (newMessage) {
+						case "upload": uploadFileD(connSessionID, newMessage, clientMessage.getData()); break;
+						default:
+							writer.write("{\"response\":{\"message\":\"*error*Error in handling command.\"}}");
+							writer.flush();
+						}
+						
+					}
 				}
 			}
 		} catch (IOException | JAXBException e) {
 			log.error("Error processing user input " + input, e);
-			writer.write("{\"response\":{\"message\":\"*error*error\"}}");
+			writer.write("{\"response\":{\"message\":\"*error*Server error in processing input\"}}");
 			closed = true;
 		} catch (SQLException e) {
 			log.error("Error retreiving information from SQL database.", e);
-			writer.write("{\"response\":{\"message\":\"*error*error\"}}");
+			writer.write("{\"response\":{\"message\":\"*error*Server error when accessing database\"}}");
 			closed = true;
 		}
 	}
@@ -156,7 +172,6 @@ public class ClientHandler implements Runnable {
 	
 	public void loginUser(ClientMessage clientMessage) throws JAXBException, SQLException, IOException {
 		log.info("Loging in user...");
-		generateSessionID();
 		
 		Response<String> response = new Response<>();
 		String message = "*error*Login credentials are incorrect.";
@@ -182,12 +197,48 @@ public class ClientHandler implements Runnable {
 		ClientMessage passwordCheckMessage = getClientMessage();
 		
 		if (passwordCheckMessage.getMessage().equals("success")) {
+			generateSessionID(newUser.getUsername());
 			message = "*login*Login successful!";
 			response.setMessage(message);
 			response.setData(sessionID);
 			log.info(message);
 		}
 		
+		sendResponse(response);
+	}
+	
+	public void uploadFileD(String connID, String message, String data) throws JAXBException, SQLException {
+		Response<FileD> response = new Response<>();
+		response.setData(new FileD(-1, "invalid", "invalid"));
+		
+		int delim = connID.indexOf('*');
+		if (delim == -1) {
+			response.setMessage("*error*Invalid session ID detected");
+			sendResponse(response);
+			return;
+		}
+		
+		String username = connID.substring(0, delim);
+		User tempUser = userDao.getUserByUsername(username);
+		
+		AbstractCommand upCmd = new UploadCommand();
+		upCmd.setUser(tempUser);
+		upCmd.setUserFileDao(userFileDao);
+		upCmd.setFileDDao(fileDDao);
+		upCmd.executeCommand(data, properties);
+		
+		if (upCmd.getFileD() == null)
+			response.setMessage("*error*Error when reading file.");
+		else if (upCmd.getFileD().getFileId() == -1)
+			response.setMessage("*error*Error when storing file to database.");
+		else if (upCmd.getUserFile() == null)
+			response.setMessage("*error*Error when setting up user file relashionship.");
+		else if (upCmd.getUserFile().getUserId() == -1 || upCmd.getUserFile().getFileId() == -1)
+			response.setMessage("*error*Error when writing user file relashionship.");
+		else {
+			response.setData(upCmd.getFileD());
+			response.setMessage("*written*File has been sucessfully written.");
+		}
 		sendResponse(response);
 	}
 	
@@ -200,15 +251,15 @@ public class ClientHandler implements Runnable {
 		writer.flush();
 	}
 	
-	public void generateSessionID() {
-		char[] chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`-=~!@#$%^&*()_+[]\\{}|;':\",./<>?".toCharArray();
+	public void generateSessionID(String username) {
+		char[] chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`-=~!@#$%^&_+|;':,.<>?".toCharArray();
 		StringBuilder sb = new StringBuilder();
 		Random random = new Random();
 		for (int i = 0; i < 32; i++) {
 		    char c = chars[random.nextInt(chars.length)];
 		    sb.append(c);
 		}
-		sessionID = sb.toString();
+		sessionID = username + '*' + sb.toString();
 		log.info("Generated session id: {}", sessionID);
 	}
 }

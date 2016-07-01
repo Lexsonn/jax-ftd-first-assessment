@@ -7,15 +7,17 @@ public class FileD {
 	
 	private Integer fileId;
 	private String filepath;
+	private String file;
 	
 	public FileD() {
 		super();
 	}
 
-	public FileD(Integer fileId, String filepath) {
+	public FileD(Integer fileId, String filepath, String file) {
 		super();
 		this.fileId = fileId;
 		this.filepath = filepath;
+		this.file = file;
 	}
 
 	public Integer getFileId() {
@@ -34,6 +36,14 @@ public class FileD {
 		this.filepath = filepath;
 	}
 
+	public String getFile() {
+		return file;
+	}
+
+	public void setFile(String file) {
+		this.file = file;
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -67,7 +77,7 @@ public class FileD {
 
 	@Override
 	public String toString() {
-		return "FileD [fileId=" + fileId + ", filepath=" + filepath + "]";
+		return "{\"fileD\":{\"fileId\":" + fileId + ", \"filepath\"" + filepath + "\", \"file\":\"" + file + "\"}}";
 	}
 	
 }

@@ -24,7 +24,8 @@ public abstract class AbstractCommand {
 	// Variables affected by individual execute commands
 	protected User user;
 	protected FileD fileD;
-	protected List<FileD> userFiles;
+	protected UserFile userFile;
+	protected List<String> fileList;
 	
 	public AbstractCommand() {
 		super();
@@ -74,6 +75,10 @@ public abstract class AbstractCommand {
 		this.userFileDao = userFileDao;
 	}
 	
+	public void setUser(User user) {
+		this.user = user;
+	}
+	
 	public User getUser() {
 		return this.user;
 	}
@@ -82,8 +87,12 @@ public abstract class AbstractCommand {
 		return this.fileD;
 	}
 	
-	public List<FileD> getUserFile() {
-		return this.userFiles;
+	public UserFile getUserFile() {
+		return this.userFile;
+	}
+	
+	public List<String> getFileList() {
+		return this.fileList;
 	}
 	
 }
