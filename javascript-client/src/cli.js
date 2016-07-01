@@ -96,6 +96,7 @@ function parseServerResponse (args, data, callback) {
     default:
       cli.log(`type: ${type} message: ${msg}`)
       server.end()
+      callback()
   }
 }
 
