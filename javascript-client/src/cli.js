@@ -17,6 +17,13 @@ let address = '127.0.0.1'
 
 const DEFAULT_DELIMITER = 'ftd-auth:'
 
+/**
+ *  Parses the response made by the server, whose message always contains the *
+ *  delimiter to signify message type.
+ *  @param args - arguments entered in by command line
+ *  @param data - JSON data object passed in through the socket by the server
+ *  @param callback - callback function
+ */
 function parseServerResponse (args, data, callback) {
   let { response } = JSON.parse(data)
   let arr = /^\*(.*)\*(.*)$/.exec(response.message)
@@ -92,6 +99,26 @@ function parseServerResponse (args, data, callback) {
   }
 }
 
+/**
+ *  Processes the various events handled by the server socket.
+ *  @param server - the server socket
+ *  @param args - the arguments passed in by command line
+ *  @param callback - callback function
+ */
+function processServer (server, args, callback) {
+  server.on('data', (data) => {
+    parseServerResponse(args, data, callback)
+  })
+
+  server.on('end', () => {
+    cli.log(chalk.red('Server has been disconnected.'))
+  })
+
+  server.on('error', () => {
+    cli.log(chalk.bold.red(`Serverside error encountered`))
+  })
+}
+
 cli
   .delimiter(`${DEFAULT_DELIMITER}`)
 
@@ -107,7 +134,7 @@ connect
 
 const register = cli.command(`register <username> <password>`)
 register
-  .description(`Registers a username and password locally.`)
+  .description(`Registers a username and password on a database on the current connection.`)
   .alias('reg', 'r')
   .action(function (args, callback) {
     if (args.username.indexOf('*') > -1 || args.username.indexOf('\\') > -1 || args.username.indexOf('/') > -1) {
@@ -121,21 +148,14 @@ register
           .then(() => server.write(`${JSON.stringify({clientMessage: {message: 'register', data: `${JSON.stringify(user)}`}})}\n`))
 
         // I promise to make this a Promise later
-        server.on('data', (data) => {
-          parseServerResponse(args, data, callback)
-        })
-
-        server.on('error', args => {
-          let err = args.err
-          this.log(`Server error encountered: ${err}`)
-        })
+        processServer(server, args, callback)
       })
     }
   })
 
 const login = cli .command(`login <username> <password>`)
 login
-  .description(`Log in using username and password.`)
+  .description(`Log in as a user to the current server connection using username and password.`)
   .alias('log', 'l')
   .action(function (args, callback) {
     server = net.createConnection(port, address, () => {
@@ -143,39 +163,25 @@ login
       // Username is all we care about server side, client side checks with password.
       server.write(`${JSON.stringify({clientMessage: {message: 'login', data: `${JSON.stringify(user)}`}})}\n`)
 
-      server.on('data', (data) => {
-        parseServerResponse(args, data, callback)
-      })
-
-      server.on('error', args => {
-        let err = args.err
-        this.log(`Server error encountered: ${err}`)
-      })
+      processServer(server, args, callback)
     })
   })
 
 const files = cli.command(`files`)
 files
-  .description(`Display list of your files if logged in.`)
+  .description(`Display a list of your files on server and their ID if logged in.`)
   .alias('file', 'f')
   .action(function (args, callback) {
     server = net.createConnection(port, address, () => {
       server.write(`${JSON.stringify({clientMessage: {message: `files${sessionID}`, data: `Daimen is the best`}})}\n`)
 
-      server.on('data', (data) => {
-        parseServerResponse(args, data, callback)
-      })
-
-      server.on('error', args => {
-        let err = args.err
-        this.log(`Server error encountered: ${err}`)
-      })
+      processServer(server, args, callback)
     })
   })
 
 const upload = cli.command(`upload <local_filepath> [server_filepath]`)
 upload
-  .description(`Upload a file to database if logged in.`)
+  .description(`Upload a given file to database if logged in.`)
   .alias('up', 'u')
   .action(function (args, callback) {
     let filepath = args.local_filepath
@@ -195,20 +201,13 @@ upload
         server = net.createConnection(port, address, () => {
           server.write(`${JSON.stringify({clientMessage: {message: `upload${sessionID}`, data: `${JSON.stringify(fileD)}`}})}\n`)
 
-          server.on('data', (data) => {
-            parseServerResponse(args, data, callback)
-          })
-
-          server.on('error', args => {
-            let err = args.err
-            this.log(`Server error encountered: ${err}`)
-          })
+          processServer(server, args, callback)
         })
       )
   })
 const download = cli.command(`download <database_file_id> [local_filepath]`)
 download
-  .description(`Download file from databse if logged in`)
+  .description(`Download file from databse to database filepath, or local filepath if logged in`)
   .alias('down', 'd')
   .action(function (args, callback) {
     let num = args.database_file_id
@@ -218,14 +217,7 @@ download
       server = net.createConnection(port, address, () => {
         server.write(`${JSON.stringify({clientMessage: {message: `download${sessionID}`, data: `"${num}"`}})}\n`)
 
-        server.on('data', (data) => {
-          parseServerResponse(args, data, callback)
-        })
-
-        server.on('error', args => {
-          let err = args.err
-          this.log(`Server error encountered: ${err}`)
-        })
+        processServer(server, args, callback)
       })
     }
   })

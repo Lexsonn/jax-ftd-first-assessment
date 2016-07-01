@@ -19,11 +19,17 @@ public class DownloadCommand extends AbstractCommand {
 		
 		fileD = new FileD(-1, "invalid", "invalid");
 		
-		List<UserFile> userFiles = userFileDao.getUserFileList(user);
+		FileD existsFileD = fileDDao.getFileById(searchFileId);
+		if (existsFileD.getFileId() == -1) {
+			fileD = null;
+			return;
+		}
 		
+		List<UserFile> userFiles = userFileDao.getUserFileList(user);
 		for (UserFile uf : userFiles) {
-			if (uf.getFileId() == searchFileId)
+			if (uf.getFileId() == searchFileId) {
 				fileD.setFileId(searchFileId);
+			}
 		}
 		
 		fileD = fileDDao.getFileById(fileD.getFileId());
