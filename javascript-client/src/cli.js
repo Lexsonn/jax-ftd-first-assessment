@@ -115,7 +115,7 @@ function processServer (server, args, callback) {
   })
 
   server.on('error', () => {
-    cli.log(chalk.bold.red(`Serverside error encountered`))
+    // cli.log(chalk.bold.red(`Serverside error encountered`))
   })
 }
 
@@ -143,8 +143,8 @@ register
     } else {
       server = net.createConnection(port, address, () => {
         let user
-        hash(args.password)
-          .then((hashedPassword) => user = new User(-1, args.username, hashedPassword))
+        hash(args.password + '')
+          .then((hashedPassword) => user = new User(-1, args.username + '', hashedPassword))
           .then(() => server.write(`${JSON.stringify({clientMessage: {message: 'register', data: `${JSON.stringify(user)}`}})}\n`))
 
         // I promise to make this a Promise later
