@@ -66,8 +66,7 @@ public class FileDDao extends AbstractDao {
 	}
 
 	public FileD getFileById(int fileId) throws SQLException {
-		if (fileId == -1) 
-			return new FileD(-1, "invalid", "invalid");
+		
 		String findFileD = "SELECT * FROM file "
 	 			 		 + "WHERE file_id = ? ";
 		
