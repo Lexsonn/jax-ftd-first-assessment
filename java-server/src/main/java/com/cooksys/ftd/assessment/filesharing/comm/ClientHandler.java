@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -26,6 +27,7 @@ import com.cooksys.ftd.assessment.filesharing.model.User;
 import com.cooksys.ftd.assessment.filesharing.model.api.AbstractCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.ClientMessage;
 import com.cooksys.ftd.assessment.filesharing.model.api.DownloadCommand;
+import com.cooksys.ftd.assessment.filesharing.model.api.ListUserFilesCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.LoginCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.RegisterCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.Response;
@@ -78,8 +80,10 @@ public class ClientHandler implements Runnable {
 						String newMessage = clientMessage.getMessage().substring(0, delimIndex);
 						switch (newMessage) {
 						case "upload": uploadFileD(connSessionID, clientMessage.getData()); break;
-						case "download": uploadFileD(connSessionID, clientMessage.getData()); break;
+						case "download": downloadFileD(connSessionID, clientMessage.getData()); break;
+						case "files": listUserFiles(connSessionID, clientMessage.getData()); break;
 						default:
+							log.warn("Invalid message type: {}", newMessage);
 							writer.write("{\"response\":{\"message\":\"*error*Error in handling command.\"}}");
 							writer.flush();
 						}
@@ -239,7 +243,7 @@ public class ClientHandler implements Runnable {
 			response.setMessage("*error*Error when writing user file relashionship.");
 		else {
 			response.setData(upCmd.getFileD());
-			response.setMessage("*written*File has been sucessfully written.");
+			response.setMessage("*uploadSuccess*File has been sucessfully written.");
 		}
 		sendResponse(response);
 	}
@@ -274,9 +278,47 @@ public class ClientHandler implements Runnable {
 			if (resultFileD.getFileId() == -1) {
 				response.setMessage("*error*You do not have access to this file.");
 			} else {
-				response.setMessage("*success*File found! Donwloading...");
+				response.setMessage("*downloadSuccess*File found! Donwloading...");
 			}
 		}
+		
+		sendResponse(response);
+	}
+	
+	public void listUserFiles(String connID, String data) throws JAXBException, SQLException {
+		Response<String> response = new Response<>();
+		response.setData("None found.");
+		
+		int delim = connID.indexOf('*');
+		if (delim == -1) {
+			response.setMessage("*error*Invalid session ID detected");
+			sendResponse(response);
+			return;
+		}
+		
+		String username = connID.substring(0, delim);
+		User tempUser = userDao.getUserByUsername(username);
+		
+		AbstractCommand listCmd = new ListUserFilesCommand();
+		listCmd.setUser(tempUser);
+		listCmd.setFileDDao(fileDDao);
+		listCmd.setUserFileDao(userFileDao);
+		listCmd.executeCommand(data, properties);
+		
+		List<String> fileList = listCmd.getFileList();
+		
+		if (fileList.isEmpty()) {
+			response.setMessage("*error*No files found for current user.");
+			sendResponse(response);
+			return;
+		}
+		
+		String responseData = "";
+		for (String filename : fileList) {
+			responseData += filename + '\n';
+		}
+		response.setMessage("*filelistSuccess*FILES STORED ON DATABASE:");
+		response.setData(responseData);
 		
 		sendResponse(response);
 	}

@@ -77,7 +77,7 @@ public class FileD {
 
 	@Override
 	public String toString() {
-		return "{\"fileD\":{\"fileId\":" + fileId + ", \"filepath\"" + filepath + "\", \"file\":\"" + file + "\"}}";
+		return "{\"fileD\":{\"fileId\":" + fileId + ", \"filepath\":\"" + filepath + "\", \"file\":\"" + file + "\"}}";
 	}
 	
 }

@@ -23,7 +23,20 @@ function filePromise (path) {
   )
 }
 
+function fileWritePromise (path, data) {
+  return new Promise(function executor (resolve, reject) {
+    fs.writeFile(path, data, function (err, successFlag) {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(true)
+      }
+    })
+  })
+}
+
 module.exports = {
   FileD,
-  filePromise
+  filePromise,
+  fileWritePromise
 }

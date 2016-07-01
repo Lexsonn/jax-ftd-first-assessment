@@ -9,6 +9,8 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
 import org.eclipse.persistence.jaxb.JAXBContextProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.cooksys.ftd.assessment.filesharing.model.FileD;
 import com.cooksys.ftd.assessment.filesharing.model.UserFile;
@@ -24,7 +26,7 @@ public class UploadCommand extends AbstractCommand {
 		
 		FileD newFileD = (FileD)unmarshaller.unmarshal(new StringReader(message));
 		
-		if (user.getUserId() == -1) {
+		if (user.getUserId() == -1 || newFileD.getFile() == null) {
 			fileD = null;
 			return;
 		}
@@ -45,6 +47,8 @@ public class UploadCommand extends AbstractCommand {
 		String filepath = newFileD.getFilepath();
 		
 		int delim = getDelimiter(filepath);
+		if (delim == -1)
+			return "invalid";
 		
 		while (filepath.indexOf(':') < filepath.indexOf(delim) && filepath.indexOf(':') != -1) {
 			filepath = filepath.substring(filepath.indexOf(delim));
@@ -54,6 +58,8 @@ public class UploadCommand extends AbstractCommand {
 	}
 	
 	private int getDelimiter(String filepath) {
+		if (filepath == null)
+			return -1;
 		int delim = '/';
 		if (filepath.indexOf('/') == -1)
 			delim = '\\';
