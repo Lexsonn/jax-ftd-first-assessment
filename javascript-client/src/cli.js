@@ -137,7 +137,7 @@ register
   .description(`Registers a username and password on a database on the current connection.`)
   .alias('reg', 'r')
   .action(function (args, callback) {
-    if (args.username.indexOf('*') > -1 || args.username.indexOf('\\') > -1 || args.username.indexOf('/') > -1) {
+    if ((args.username + '').indexOf('*') > -1 || (args.username + '').indexOf('\\') > -1 || (args.username + '').indexOf('/') > -1) {
       this.log(chalk.bold.red(`invalid username entered.`))
       callback()
     } else {
