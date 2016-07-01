@@ -46,7 +46,42 @@ public class FileDDao extends AbstractDao {
 		return fileD;
 	}
 	
-	public FileD getFileFromPath(String filepath) {
-		return null; //TODO
+	public FileD getFileFromPath(String filepath) throws SQLException {
+		String findFileD = "SELECT * FROM file "
+				 	     + "WHERE filepath LIKE ? ";
+
+		// Check if file exists first. If so update it.
+		PreparedStatement stmt = conn.prepareStatement(findFileD, Statement.RETURN_GENERATED_KEYS);
+		stmt.setString(1, filepath);
+		ResultSet rs = stmt.executeQuery();
+		
+		if (rs.next()) { // File exists in the database.
+			int fileId = rs.getInt("file_id");
+			String path = rs.getString("filepath");
+			String file = rs.getString("data");
+			return new FileD(fileId, path, file);
+		}
+		
+		return new FileD(-1, "invalid", "invalid");
+	}
+
+	public FileD getFileById(int fileId) throws SQLException {
+		if (fileId == -1) 
+			return new FileD(-1, "invalid", "invalid");
+		String findFileD = "SELECT * FROM file "
+	 			 		 + "WHERE file_id = ? ";
+		
+		PreparedStatement stmt = conn.prepareStatement(findFileD, Statement.RETURN_GENERATED_KEYS);
+		stmt.setInt(1, fileId);
+		ResultSet rs = stmt.executeQuery();
+		
+		if (rs.next()) {
+			int id = rs.getInt("file_id");
+			String filepath = rs.getString("filepath");
+			String file = rs.getString("data");
+			return new FileD(id, filepath, file);
+		}
+		
+		return null;
 	}
 }

@@ -4,6 +4,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.cooksys.ftd.assessment.filesharing.model.User;
@@ -36,7 +37,26 @@ public class UserFileDao extends AbstractDao {
 		return userFile;
 	}
 	
-	public List<String> getUserFileList(User user) {
+	public List<UserFile> getUserFileList(User user) throws SQLException {
+		List<UserFile> userFiles = new ArrayList<UserFile>();
+		
+		String findUserFiles = "SELECT * FROM user_file "
+		 		 			 + "WHERE user_id = ? ";
+		
+		PreparedStatement stmt = conn.prepareStatement(findUserFiles, Statement.RETURN_GENERATED_KEYS);
+		stmt.setInt(1, user.getUserId());
+		ResultSet rs = stmt.executeQuery();
+		
+		while(rs.next()) {
+			int userId = rs.getInt("user_id");
+			int fileId = rs.getInt("file_id");
+			userFiles.add(new UserFile(userId, fileId));
+		}
+
+		return userFiles;
+	}
+	
+	public List<String> getUserFileIds(User user) {
 		return null; //TODO
 	}
 }

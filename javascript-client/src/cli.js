@@ -37,7 +37,7 @@ register
   .alias('reg', 'r')
   .action(function (args, callback) {
     if (args.username.indexOf('*') > -1 || args.username.indexOf('\\') > -1 || args.username.indexOf('/') > -1) {
-      this.log(`invalid username entered.`)
+      this.log(chalk.bold.red(`invalid username entered.`))
       callback()
     } else {
       server = net.createConnection(port, address, () => {
@@ -185,7 +185,7 @@ download
       this.log(chalk.bold.red(`invalid file id entered.`))
     } else {
       server = net.createConnection(port, address, () => {
-        server.write(`${JSON.stringify({clientMessage: {message: `download${sessionID}`, data: `${JSON.stringify(num)}`}})}\n`)
+        server.write(`${JSON.stringify({clientMessage: {message: `download${sessionID}`, data: `"${num}"`}})}\n`)
 
         server.on('data', (data) => {
           let { response } = JSON.parse(data)

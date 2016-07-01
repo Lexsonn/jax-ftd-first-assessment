@@ -25,6 +25,7 @@ import com.cooksys.ftd.assessment.filesharing.model.FileD;
 import com.cooksys.ftd.assessment.filesharing.model.User;
 import com.cooksys.ftd.assessment.filesharing.model.api.AbstractCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.ClientMessage;
+import com.cooksys.ftd.assessment.filesharing.model.api.DownloadCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.LoginCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.RegisterCommand;
 import com.cooksys.ftd.assessment.filesharing.model.api.Response;
@@ -76,7 +77,8 @@ public class ClientHandler implements Runnable {
 							log.info("Session IDs match!");
 						String newMessage = clientMessage.getMessage().substring(0, delimIndex);
 						switch (newMessage) {
-						case "upload": uploadFileD(connSessionID, newMessage, clientMessage.getData()); break;
+						case "upload": uploadFileD(connSessionID, clientMessage.getData()); break;
+						case "download": uploadFileD(connSessionID, clientMessage.getData()); break;
 						default:
 							writer.write("{\"response\":{\"message\":\"*error*Error in handling command.\"}}");
 							writer.flush();
@@ -207,7 +209,7 @@ public class ClientHandler implements Runnable {
 		sendResponse(response);
 	}
 	
-	public void uploadFileD(String connID, String message, String data) throws JAXBException, SQLException {
+	public void uploadFileD(String connID, String data) throws JAXBException, SQLException {
 		Response<FileD> response = new Response<>();
 		response.setData(new FileD(-1, "invalid", "invalid"));
 		
@@ -239,6 +241,43 @@ public class ClientHandler implements Runnable {
 			response.setData(upCmd.getFileD());
 			response.setMessage("*written*File has been sucessfully written.");
 		}
+		sendResponse(response);
+	}
+	
+	public void downloadFileD(String connID, String data) throws JAXBException, SQLException {
+		Response<FileD> response = new Response<>();
+		response.setData(new FileD(-1, "invalid", "invalid"));
+		
+		int delim = connID.indexOf('*');
+		if (delim == -1) {
+			response.setMessage("*error*Invalid session ID detected");
+			sendResponse(response);
+			return;
+		}
+		
+		String username = connID.substring(0, delim);
+		User tempUser = userDao.getUserByUsername(username);
+		
+		AbstractCommand downCmd = new DownloadCommand();
+		downCmd.setUser(tempUser);
+		downCmd.setUserFileDao(userFileDao);
+		downCmd.setFileDDao(fileDDao);
+		downCmd.executeCommand(data, properties);
+		
+		FileD resultFileD = downCmd.getFileD();
+		
+		if (resultFileD == null) {
+			response.setMessage("*error*File does not exist");
+			response.setData(new FileD(-1, "invalid", "invalid"));
+		} else {
+			response.setData(resultFileD);
+			if (resultFileD.getFileId() == -1) {
+				response.setMessage("*error*You do not have access to this file.");
+			} else {
+				response.setMessage("*success*File found! Donwloading...");
+			}
+		}
+		
 		sendResponse(response);
 	}
 	

@@ -53,7 +53,6 @@ public class Main {
 			
 			Future<?> serverFuture = executor.submit(server); // start server
 															  // (asynchronously)
-
 			serverFuture.get();
 
 		} catch (SQLException | InterruptedException | ExecutionException e) {
