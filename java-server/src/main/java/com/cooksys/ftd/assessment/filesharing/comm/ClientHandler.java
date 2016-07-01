@@ -63,8 +63,6 @@ public class ClientHandler implements Runnable {
 				
 				ClientMessage clientMessage = getClientMessage();
 				
-				log.info("clientMessage: data={}, message={}", clientMessage.getData(), clientMessage.getMessage());
-				
 				switch (clientMessage.getMessage()) {
 				case "register": registerUser(clientMessage); break;
 				case "login": loginUser(clientMessage); break;
@@ -72,7 +70,7 @@ public class ClientHandler implements Runnable {
 				}
 			}
 		} catch (IOException | JAXBException e) {
-			log.error("Error processing user input " + input + ".", e);
+			log.error("Error processing user input " + input, e);
 			writer.write("{\"response\":{\"message\":\"*error*error\"}}");
 			closed = true;
 		} catch (SQLException e) {
@@ -129,6 +127,7 @@ public class ClientHandler implements Runnable {
 	}
 	
 	public void registerUser(ClientMessage clientMessage) throws JAXBException, SQLException {
+		log.info("Registering user...");
 		Response<User> response = new Response<>();
 		response.setMessage("*user*User has been sucessfully registered!");
 		
@@ -156,6 +155,7 @@ public class ClientHandler implements Runnable {
 	}
 	
 	public void loginUser(ClientMessage clientMessage) throws JAXBException, SQLException, IOException {
+		log.info("Loging in user...");
 		generateSessionID();
 		
 		Response<String> response = new Response<>();
@@ -204,7 +204,7 @@ public class ClientHandler implements Runnable {
 		char[] chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890`-=~!@#$%^&*()_+[]\\{}|;':\",./<>?".toCharArray();
 		StringBuilder sb = new StringBuilder();
 		Random random = new Random();
-		for (int i = 0; i < 20; i++) {
+		for (int i = 0; i < 32; i++) {
 		    char c = chars[random.nextInt(chars.length)];
 		    sb.append(c);
 		}
