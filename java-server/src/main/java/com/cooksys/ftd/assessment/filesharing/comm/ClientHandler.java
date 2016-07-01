@@ -46,8 +46,6 @@ public class ClientHandler implements Runnable {
 	private FileDDao fileDDao;
 	private UserFileDao userFileDao;
 	
-	private boolean closed;
-	
 	public UserDao getUserDao() {
 		return userDao;
 	}
@@ -55,50 +53,45 @@ public class ClientHandler implements Runnable {
 	@Override
 	public void run() {
 		properties.put("eclipselink.media-type", "application/json");
-		closed = false;
 
 		String input = "";
 		try {
-			while (!closed) {
-				log.info("Waiting for client input...");
-				
-				ClientMessage clientMessage = getClientMessage();
-				
-				switch (clientMessage.getMessage()) {
-				case "register": registerUser(clientMessage); break;
-				case "login": loginUser(clientMessage); break;
-				default: // Functions allowed only while logged in
-					int delimIndex = clientMessage.getMessage().indexOf('*');
-					if (delimIndex == -1) {
-						log.info("Session IDs do not match.");
-						writer.write("{\"response\":{\"message\":\"*error*Login credentials are incorrect\"}}");
+			log.info("Waiting for client input...");
+			
+			ClientMessage clientMessage = getClientMessage();
+			
+			switch (clientMessage.getMessage()) {
+			case "register": registerUser(clientMessage); break;
+			case "login": loginUser(clientMessage); break;
+			default: // Functions allowed only while logged in
+				int delimIndex = clientMessage.getMessage().indexOf('*');
+				if (delimIndex == -1) {
+					log.info("Session IDs do not match.");
+					writer.write("{\"response\":{\"message\":\"*error*Login credentials are incorrect\"}}");
+					writer.flush();
+				} else {
+					String connSessionID = clientMessage.getMessage().substring(delimIndex + 1);
+					if (connSessionID.equals(sessionID))
+						log.info("Session IDs match!");
+					String newMessage = clientMessage.getMessage().substring(0, delimIndex);
+					switch (newMessage) {
+					case "upload": uploadFileD(connSessionID, clientMessage.getData()); break;
+					case "download": downloadFileD(connSessionID, clientMessage.getData()); break;
+					case "files": listUserFiles(connSessionID, clientMessage.getData()); break;
+					default:
+						log.warn("Invalid message type: {}", newMessage);
+						writer.write("{\"response\":{\"message\":\"*error*Error in handling command.\"}}");
 						writer.flush();
-					} else {
-						String connSessionID = clientMessage.getMessage().substring(delimIndex + 1);
-						if (connSessionID.equals(sessionID))
-							log.info("Session IDs match!");
-						String newMessage = clientMessage.getMessage().substring(0, delimIndex);
-						switch (newMessage) {
-						case "upload": uploadFileD(connSessionID, clientMessage.getData()); break;
-						case "download": downloadFileD(connSessionID, clientMessage.getData()); break;
-						case "files": listUserFiles(connSessionID, clientMessage.getData()); break;
-						default:
-							log.warn("Invalid message type: {}", newMessage);
-							writer.write("{\"response\":{\"message\":\"*error*Error in handling command.\"}}");
-							writer.flush();
-						}
-						
 					}
+					
 				}
 			}
 		} catch (IOException | JAXBException e) {
 			log.error("Error processing user input " + input, e);
 			writer.write("{\"response\":{\"message\":\"*error*Server error in processing input\"}}");
-			closed = true;
 		} catch (SQLException e) {
 			log.error("Error retreiving information from SQL database.", e);
 			writer.write("{\"response\":{\"message\":\"*error*Server error when accessing database\"}}");
-			closed = true;
 		}
 	}
 
@@ -162,15 +155,12 @@ public class ClientHandler implements Runnable {
 		if (newUser == null) {
 			String message = "*error*Unable to enter user into database.";
 			response.setMessage(message);
-			log.error(message);
 		}
 		else {
 			if (newUser.getUserId() == -1) {
 				String message = "*error*Username already exists.";
 				response.setMessage(message);
-				log.info(message);
-			} else
-				log.info("User {} has been sucessfully registered!", newUser.getUsername());
+			}
 		}
 		
 		sendResponse(response);
@@ -180,8 +170,7 @@ public class ClientHandler implements Runnable {
 		log.info("Loging in user...");
 		
 		Response<String> response = new Response<>();
-		String message = "*error*Login credentials are incorrect.";
-		response.setMessage(message);
+		response.setMessage("*loginError*Login credentials are incorrect.");
 		response.setData("invalid");
 		
 		AbstractCommand logCmd = new LoginCommand();
@@ -190,7 +179,6 @@ public class ClientHandler implements Runnable {
 		User newUser = logCmd.getUser();
 		
 		if (newUser.getUserId() == -1) {
-			log.info(message);
 			sendResponse(response);
 			return;
 		} 
@@ -204,10 +192,8 @@ public class ClientHandler implements Runnable {
 		
 		if (passwordCheckMessage.getMessage().equals("success")) {
 			generateSessionID(newUser.getUsername());
-			message = "*login*Login successful!";
-			response.setMessage(message);
+			response.setMessage("*login*Login successful!");
 			response.setData(sessionID);
-			log.info(message);
 		}
 		
 		sendResponse(response);
@@ -324,6 +310,7 @@ public class ClientHandler implements Runnable {
 	}
 	
 	public void sendResponse(Response<?> response) throws JAXBException {
+		log.info("Response: {}", response.getMessage());
 		JAXBContext jc = JAXBContext.newInstance(new Class[] { Response.class }, properties);
 		Marshaller marshaller = jc.createMarshaller();
 		marshaller.setProperty(JAXBContextProperties.MEDIA_TYPE, "application/json");

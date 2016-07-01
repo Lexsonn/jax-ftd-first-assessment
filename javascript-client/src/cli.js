@@ -17,6 +17,81 @@ let address = '127.0.0.1'
 
 const DEFAULT_DELIMITER = 'ftd-auth:'
 
+function parseServerResponse (args, data, callback) {
+  let { response } = JSON.parse(data)
+  let arr = /^\*(.*)\*(.*)$/.exec(response.message)
+  let type = arr[1]
+  let msg = arr[2]
+  switch (type) {
+    case 'error':
+      cli.log(chalk.bold.red(`${msg}`))
+      server.end()
+      callback()
+      break
+    case 'user':
+      cli.log(chalk.green(`${msg}`))
+      server.end()
+      callback()
+      break
+    case 'loginError':
+      cli.log(chalk.bold.red(`${msg}`))
+      sessionID = ''
+      cli.delimiter(`${DEFAULT_DELIMITER}`)
+      server.end()
+      callback()
+      break
+    case 'checkPass':
+      currentUser = JSON.parse(response.data.replace('\\', ''))
+      currentUser = currentUser.user
+      compare(args.password, currentUser.password)
+        .then((successFlag) => successFlag
+          ? server.write(`${JSON.stringify({clientMessage: {message: 'success', data: `success`}})}\n`)
+          : server.write(`${JSON.stringify({clientMessage: {message: 'Daimen is smart', data: `Daimen is awesome`}})}\n`)
+        )
+      break
+    case 'login':
+      cli.log(chalk.green(`${msg}`))
+      sessionID = '*' + response.data.value
+      cli.delimiter(`${currentUser.username}:`)
+      server.end()
+      callback()
+      break
+    case 'filelistSuccess':
+      cli.log(chalk.bold.bgGreen(`${msg}`))
+      cli.log(chalk.green(response.data.value))
+      server.end()
+      callback()
+      break
+    case 'uploadSuccess':
+      cli.log(chalk.green(`${msg}`))
+      server.end()
+      callback()
+      break
+    case 'downloadSuccess':
+      cli.log(chalk.green(`${msg}`))
+      let fileD = JSON.parse(response.data.replace('\\', ''))
+      fileD = fileD.fileD
+      let filepath = fileD.filepath
+      if ('local_filepath' in args) {
+        filepath = args.local_filepath
+      }
+      cli.log(chalk.bold(`writing to filepath: ${filepath}`))
+      fileWritePromise(filepath, new Buffer(base64.toByteArray(fileD.file)))
+        .then((successFlag) => successFlag
+            ? cli.log(chalk.green(`File succesfully written`))
+            : cli.log(chalk.red(`File ${filepath} , has not been written`))
+          )
+        .catch((err) => cli.log(chalk.bold.red(`Error writing to file ${err}`)))
+      // this.log(JSON.stringify(fileD))
+      server.end()
+      callback()
+      break
+    default:
+      cli.log(`type: ${type} message: ${msg}`)
+      server.end()
+  }
+}
+
 cli
   .delimiter(`${DEFAULT_DELIMITER}`)
 
@@ -47,24 +122,12 @@ register
 
         // I promise to make this a Promise later
         server.on('data', (data) => {
-          let { response } = JSON.parse(data)
-          let arr = /^\*(.*)\*(.*)$/.exec(response.message)
-          let type = arr[1]
-          let msg = arr[2]
-          switch (type) {
-            case 'error':
-              this.log(chalk.bold.red(`${msg}`))
-              server.end()
-              break
-            case 'user':
-              this.log(chalk.green(`${msg}`))
-              server.end()
-              break
-            default:
-              this.log(`Default: ${msg}`)
-              server.end()
-          }
-          callback()
+          parseServerResponse(args, data, callback)
+        })
+
+        server.on('error', args => {
+          let err = args.err
+          this.log(`Server error encountered: ${err}`)
         })
       })
     }
@@ -81,39 +144,12 @@ login
       server.write(`${JSON.stringify({clientMessage: {message: 'login', data: `${JSON.stringify(user)}`}})}\n`)
 
       server.on('data', (data) => {
-        let { response } = JSON.parse(data)
-        let arr = /^\*(.*)\*(.*)$/.exec(response.message)
-        let type = arr[1]
-        let msg = arr[2]
-        switch (type) {
-          case 'error':
-            this.log(chalk.bold.red(`${msg}`))
-            sessionID = ''
-            cli.delimiter(`${DEFAULT_DELIMITER}`)
-            server.end()
-            callback()
-            break
-          case 'checkPass':
-            currentUser = JSON.parse(response.data.replace('\\', ''))
-            currentUser = currentUser.user
-            compare(args.password, currentUser.password)
-              .then((successFlag) => successFlag
-                ? server.write(`${JSON.stringify({clientMessage: {message: 'success', data: `success`}})}\n`)
-                : server.write(`${JSON.stringify({clientMessage: {message: 'Daimen is smart', data: `Daimen is awesome`}})}\n`)
-              )
-            break
-          case 'login':
-            this.log(chalk.green(`${msg}`))
-            sessionID = '*' + response.data.value
-            cli.delimiter(`${currentUser.username}:`)
-            server.end()
-            callback()
-            break
-          default:
-            this.log(`Default: ${msg}`)
-            server.end()
-            callback()
-        }
+        parseServerResponse(args, data, callback)
+      })
+
+      server.on('error', args => {
+        let err = args.err
+        this.log(`Server error encountered: ${err}`)
       })
     })
   })
@@ -127,25 +163,12 @@ files
       server.write(`${JSON.stringify({clientMessage: {message: `files${sessionID}`, data: `Daimen is the best`}})}\n`)
 
       server.on('data', (data) => {
-        let { response } = JSON.parse(data)
-        let arr = /^\*(.*)\*(.*)$/.exec(response.message)
-        let type = arr[1]
-        let msg = arr[2]
-        switch (type) {
-          case 'error':
-            this.log(chalk.bold.red(`${msg}`))
-            server.end()
-            break
-          case 'filelistSuccess':
-            this.log(chalk.bold.bgGreen(`${msg}`))
-            this.log(chalk.green(response.data.value))
-            server.end()
-            break
-          default:
-            this.log(`type: ${type} message: ${msg}`)
-            server.end()
-        }
-        callback()
+        parseServerResponse(args, data, callback)
+      })
+
+      server.on('error', args => {
+        let err = args.err
+        this.log(`Server error encountered: ${err}`)
       })
     })
   })
@@ -173,26 +196,12 @@ upload
           server.write(`${JSON.stringify({clientMessage: {message: `upload${sessionID}`, data: `${JSON.stringify(fileD)}`}})}\n`)
 
           server.on('data', (data) => {
-            let { response } = JSON.parse(data)
-            let arr = /^\*(.*)\*(.*)$/.exec(response.message)
-            let type = arr[1]
-            let msg = arr[2]
-            switch (type) {
-              case 'error':
-                this.log(chalk.bold.red(`${msg}`))
-                server.end()
-                callback()
-                break
-              case 'uploadSuccess':
-                this.log(chalk.green(`${msg}`))
-                server.end()
-                callback()
-                break
-              default:
-                this.log(`type: ${type} message: ${msg}`)
-                server.end()
-                callback()
-            }
+            parseServerResponse(args, data, callback)
+          })
+
+          server.on('error', args => {
+            let err = args.err
+            this.log(`Server error encountered: ${err}`)
           })
         })
       )
@@ -203,10 +212,6 @@ download
   .alias('down', 'd')
   .action(function (args, callback) {
     let num = args.database_file_id
-    let filepath = ''
-    if ('local_filepath' in args) {
-      filepath = args.local_filepath
-    }
     if (num < 0) {
       this.log(chalk.bold.red(`invalid file id entered.`))
     } else {
@@ -214,38 +219,12 @@ download
         server.write(`${JSON.stringify({clientMessage: {message: `download${sessionID}`, data: `"${num}"`}})}\n`)
 
         server.on('data', (data) => {
-          let { response } = JSON.parse(data)
-          let arr = /^\*(.*)\*(.*)$/.exec(response.message)
-          let type = arr[1]
-          let msg = arr[2]
-          switch (type) {
-            case 'error':
-              this.log(chalk.bold.red(`${msg}`))
-              server.end()
-              callback()
-              break
-            case 'downloadSuccess':
-              this.log(chalk.green(`${msg}`))
-              let fileD = JSON.parse(response.data.replace('\\', ''))
-              fileD = fileD.fileD
-              if (filepath === '') {
-                filepath = fileD.filepath
-              }
-              this.log(chalk.bold(`writing to filepath: ${filepath}`))
-              fileWritePromise(filepath, new Buffer(base64.toByteArray(fileD.file)))
-                .then((successFlag) => successFlag
-                    ? this.log(chalk.green(`File succesfully written`))
-                    : this.log(chalk.red(`File ${filepath} , has not been written`))
-                  )
-                .catch((err) => this.log(chalk.bold.red(`Error writing to file ${err}`)))
-              // this.log(JSON.stringify(fileD))
-              callback()
-              break
-            default:
-              this.log(`Default: ${msg}`)
-              server.end()
-              callback()
-          }
+          parseServerResponse(args, data, callback)
+        })
+
+        server.on('error', args => {
+          let err = args.err
+          this.log(`Server error encountered: ${err}`)
         })
       })
     }
@@ -258,6 +237,7 @@ logout
     if (sessionID === '') {
       this.log(`You are not currently logged in.`)
     } else {
+      this.log(chalk.green(`You are now logged out.`))
       sessionID = ''
       cli.delimiter(`${DEFAULT_DELIMITER}`)
     }
